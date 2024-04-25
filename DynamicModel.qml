@@ -12,6 +12,7 @@ Model {
 
     pickable: true
     NumberAnimation on eulerRotation.y {
+        running: false
         from: 0
         to: 360
         duration: 17000
@@ -29,7 +30,7 @@ Model {
             loops: Animation.Infinite
         }
     }
-    morphTargets: [ morphtarget ]
+//    morphTargets: [ morphtarget ]
     materials: PencilMaterial {
         id: idMaterial
         uDiffuse: "grey"

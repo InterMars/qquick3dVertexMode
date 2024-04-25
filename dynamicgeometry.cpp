@@ -1,5 +1,6 @@
 #include "dynamicgeometry.h"
 
+#include <QRandomGenerator>
 #include <qmath.h>
 
 struct Vertex {
@@ -13,7 +14,7 @@ Q_STATIC_ASSERT((sizeof(Vertex)/16)*16 == sizeof(Vertex));
 
 DynamicGeometry::DynamicGeometry(QQuick3DObject* parent) : QQuick3DGeometry(parent)
 {
-    updateData();
+    updateDataB();
 }
 void DynamicGeometry::setGridSize(int gridSize)
 {
@@ -22,6 +23,15 @@ void DynamicGeometry::setGridSize(int gridSize)
 
     m_gridSize = gridSize;
     emit gridSizeChanged();
+    updateData();
+    update();
+}
+void DynamicGeometry::setMode(int mode) {
+    if(m_mode == mode)  return;
+
+    m_mode = mode;
+    emit modeChanged();
+
     updateData();
     update();
 }
@@ -93,7 +103,7 @@ void DynamicGeometry::calculateGeometry(){
 
             // The base shape is a cosine wave, and the corresponding normal
             // vectors are calculated from the partial derivatives.
-            float y = 2 * qCos(x) + 3.0;
+            float y = /*2 * qCos(x) + 3.0*/10.0;
             QVector3D normal{2 * qSin(x), 2, 0};
 
             float tx = x * 1.2;
@@ -224,49 +234,83 @@ void DynamicGeometry::calculateColumnGeometry(){
 }
 
 void DynamicGeometry::calculateTriangleGeometry(){
+    float dw = 10.0; // width/2
+    float dh = 10.0;
+    int iw = m_gridSize;
+    int ih = m_gridSize;
+
     // 清空之前的数据
     m_positions.clear();
     m_indexes.clear();
     m_targetPositions.clear();
     m_targetNormals.clear();
 
-    // 定义三角形的三个顶点
-    QVector3D vertex1(-5.0, 0.0, 5.0);
-    QVector3D vertex2(5.0, 0.0, 5.0);
-    QVector3D vertex3(5.0, 0.0, -5.0);
-    QVector3D vertex4(-5.0, 0.0, -5.0);
+    const float R = 10.0;
+    constexpr float maxFloat = std::numeric_limits<float>::max();
+    m_boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
+    m_boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
 
-    // 将三个顶点添加到顶点数组中
-    m_positions.append(vertex1);
-    m_positions.append(vertex2);
-    m_positions.append(vertex3);
-    m_positions.append(vertex4);
+    for(int iy = 0; iy < ih; ++iy) {
+        for(int ix = 0; ix < iw; ++ix) {
+            float x = ix;
+            float y = qSqrt(R*R - ix*ix);
+            float z = qSqrt(R*R - x*x - y*y);
 
-    // 添加目标位置和目标法线（此处与顶点位置和法线相同）
-    m_targetPositions.append(vertex1);
-    m_normals.append({0.0, 1.0, 0.0});
-    m_targetPositions.append(vertex2);
-    m_normals.append({0.0, 1.0, 0.0});
-    m_targetPositions.append(vertex3);
-    m_normals.append({0.0, 1.0, 0.0});
-    m_targetPositions.append(vertex4);
-    m_normals.append({0.0, 1.0, 0.0});
+            QVector3D normal{2 * qSin(x), 2, 0};
 
-    m_targetNormals.append(QVector3D(0.0, 0.0, 1.0)); // 三角形的法线向量
-    m_targetNormals.append(QVector3D(0.0, 0.0, 1.0)); // 三角形的法线向量
-    m_targetNormals.append(QVector3D(0.0, 0.0, 1.0)); // 三角形的法线向量
-    m_targetNormals.append(QVector3D(0.0, 0.0, 1.0)); // 三角形的法线向量
+            if (iy >= ih-2)
+                normal = {0, 0, 1};
+            else if (iy <= 1)
+                normal = {0, 0, -1};
 
-    // 生成顶点索引，按顺时针方向连接三个顶点
-    m_indexes.append(0);
-    m_indexes.append(1);
-    m_indexes.append(2);
-    m_indexes.append(0);
-    m_indexes.append(2);
-    m_indexes.append(3);
+            m_positions.append({x, y, z});
+            m_normals.append(normal.normalized());
+            m_targetPositions.append({x, y, z});
+            m_targetNormals.append(normal.normalized());
+        }
+    }
+//    int baseIndex = m_gridSize * 2;
+//    for (int i = 0; i < m_gridSize - 1; ++i) {
+//        m_indexes << baseIndex << i * 2 << (i + 1) * 2;
+//        m_indexes << baseIndex + 1 << (i + 1) * 2 + 1 << i * 2 + 1;
+//    }
+//    m_indexes << baseIndex << (m_gridSize - 1) * 2 << 0;
+//    m_indexes << baseIndex + 1 << (m_gridSize - 1) * 2 + 1 << 1;
+//    for (int ix = 0; ix < iw - 1; ++ix) {
+//        for (int iy = 0; iy < ih - 1; ++iy) {
+//            int idx = ix + iy * ih;
+//            m_indexes << idx << idx + iw << idx + iw + 1
+//                      << idx << idx + iw + 1 << idx + 1;
+//        }
+//    }
 
-    // 更新边界范围
-    m_boundsMin = QVector3D(0.0, 0.0, 0.0);
-    m_boundsMax = QVector3D(1.0, 1.0, 0.0);
 }
+void DynamicGeometry::updateDataB(){
+    clear();
 
+    constexpr auto randomFloat = [](const float lowest, const float highest) -> float {
+        return lowest + QRandomGenerator::global()->generateDouble() * (highest - lowest);
+    };
+    constexpr int NUM_POINTS = 2000;
+    constexpr int stride = 3 * sizeof(float);
+
+    QByteArray vertexData;
+    vertexData.resize(NUM_POINTS * stride);
+    float *p = reinterpret_cast<float *>(vertexData.data());
+
+    for (int i = 0; i < NUM_POINTS; ++i) {
+        *p++ = randomFloat(-5.0f, +5.0f);
+        *p++ = randomFloat(-5.0f, +5.0f);
+        *p++ = 0.0f;
+    }
+
+    setVertexData(vertexData);
+    setStride(stride);
+    setBounds(QVector3D(-5.0f, -5.0f, 0.0f), QVector3D(+5.0f, +5.0f, 0.0f));
+
+    setPrimitiveType(QQuick3DGeometry::PrimitiveType::Points);
+
+    addAttribute(QQuick3DGeometry::Attribute::PositionSemantic,
+                 0,
+                 QQuick3DGeometry::Attribute::F32Type);
+}

@@ -10,4 +10,5 @@ CustomMaterial {
     // interior
     shadingMode: CustomMaterial.Shaded
     fragmentShader: "shaders/pencil.frag"
+
 }
