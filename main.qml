@@ -4,6 +4,7 @@ import QtQuick.Window
 import QtQuick3D.Helpers
 import QtQuick3D.AssetUtils
 
+import DemoA
 
 Window {
     id: idwindow
@@ -19,7 +20,7 @@ Window {
         renderMode: View3D.Underlay
         camera: orbitCamera
         environment: SceneEnvironment {
-            debugSettings.wireframeEnabled: false
+            debugSettings.wireframeEnabled: true
             backgroundMode: SceneEnvironment.SkyBox
             lightProbe: Texture {
                 textureData: ProceduralSkyTextureData{  }
@@ -79,7 +80,18 @@ Window {
 //            z: 50
             objectName: "modelb"
         }
-
+        Model {
+            scale: Qt.vector3d(100, 100, 100)
+            geometry: CubeGeometry {
+            }
+            materials: [
+                DefaultMaterial {
+                    cullMode: DefaultMaterial.NoCulling
+                    diffuseColor: "green"
+                    specularAmount: 0.5
+                }
+            ]
+        }
     }
     Shortcut {
         sequence: "Esc"
