@@ -40,11 +40,13 @@ signals:
 private:
     void updateData();
     void calculateGeometry();
+    void calculatePlaneGeometry();
 
-    bool m_hasNormals = false;
+    bool m_hasNormals = true;
     float m_normalXY = 0.0f;
     bool m_hasUV = false;
     float m_uvAdjust = 0.0f;
+    bool m_hasTarget = false;
 
     int m_gridSize = 50;
     QVector3D m_boundsMin;

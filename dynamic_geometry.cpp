@@ -1,4 +1,4 @@
-#include "dynamicgeometry.h"
+#include "dynamic_geometry.h"
 
 #include <QRandomGenerator>
 #include <qmath.h>
@@ -14,7 +14,7 @@ Q_STATIC_ASSERT((sizeof(Vertex)/16)*16 == sizeof(Vertex));
 
 DynamicGeometry::DynamicGeometry(QQuick3DObject* parent) : QQuick3DGeometry(parent)
 {
-    updateDataB();
+    updateData();
 }
 void DynamicGeometry::setGridSize(int gridSize)
 {
@@ -38,6 +38,7 @@ void DynamicGeometry::setMode(int mode) {
 void DynamicGeometry::updateData(){
     clear();
     calculateGeometry();
+//    calculateColumnGeometry();
 //    calculateTriangleGeometry();
 
     addAttribute(QQuick3DGeometry::Attribute::PositionSemantic, 0,
@@ -68,7 +69,7 @@ void DynamicGeometry::updateData(){
     setStride(sizeof(Vertex));
     setVertexData(m_vertexBuffer);
     setPrimitiveType(QQuick3DGeometry::PrimitiveType::Triangles);
-    setBounds(m_boundsMin, m_boundsMax);
+    setBounds(boundsMin, boundsMax);
 
     m_indexBuffer = QByteArray(reinterpret_cast<char *>(m_indexes.data()), m_indexes.size() * sizeof(quint32));
     setIndexData(m_indexBuffer);
@@ -88,73 +89,55 @@ void DynamicGeometry::calculateGeometry(){
     m_targetNormals.clear();
 
     constexpr float maxFloat = std::numeric_limits<float>::max();
-    m_boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
-    m_boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
+    boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
+    boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
 
-    // We construct a rectangular grid of iw times ih vertices;
-    // ix and iy are indices into the grid. x, y, and z are the spatial
-    // coordinates we calculate for each vertex. tx, ty, and tz are the
-    // coordinates for the morph target.
-
+    const float R = 16;
+    float x = 0, y = 0, z = 0;
     for (int iy = 0; iy < ih; ++iy) {
         for (int ix = 0; ix < iw; ++ix) {
-            float x = ix * wf - dw;
-            float z = iy * hf - dh;
+            float theta = M_PI * iy / (ih - 1); // 角度范围在 [0, π]
+            float phi = 2 * M_PI * ix / (iw - 1); // 角度范围在 [0, 2π]
 
-            // The base shape is a cosine wave, and the corresponding normal
-            // vectors are calculated from the partial derivatives.
-            float y = /*2 * qCos(x) + 3.0*/10.0;
-            QVector3D normal{2 * qSin(x), 2, 0};
+            float waveHeight = 1.0 ;
+            float x = R * sin(theta) * cos(phi) + waveHeight;
+            float y = R * sin(theta) * sin(phi) + waveHeight;
+            float z = R * cos(theta) + waveHeight;
 
-            float tx = x * 1.2;
-            float tz = z * 1.2;
-
-            constexpr float R = 16;
-            QVector3D targetPosition;
-            QVector3D targetNormal;
-
-            // The morph target shape is a hemisphere. Therefore we don't have
-            // to do complex math to calculate the normal vector, since all vectors
-            // from the center are normal to the surface of a sphere.
-            if (tx*tx + tz*tz < R*R) {
-                float ty = 0.4f * qSqrt(R*R - tx*tx - tz*tz);
-                targetPosition = {tx, ty, tz};
-                targetNormal = targetPosition;
-            } else {
-                targetPosition = {tx, -3, tz};
-                targetNormal = {0, 1, 0};
-            }
-
-            // Finally, we make the outside edges of the shapes vertical, so they look nicer.
-            if (ix == 0 || iy == 0 || ix == iw-1 || iy == ih-1) {
-                int iix = qMin(iw-2, qMax(1, ix));
-                int iiy = qMin(ih-2, qMax(1, iy));
-                x = iix * wf - dw;
-                z = iiy * hf - dh;
-                y = -3.0;
-                targetPosition.setY(-3);
-            }
+            QVector3D normal{2*x, 2*y, z};
 
             if (iy >= ih-2)
                 normal = {0, 0, 1};
             else if (iy <= 1)
                 normal = {0, 0, -1};
 
+
+            float tx = ix * wf - dw;
+            float tz = iy * hf - dh;
+            float ty = 3.0;
+
+            QVector3D targetPosition{tx, ty, tz};
+            QVector3D targetNormal{0, 2, 0};
+
+            if (ix == 0 || iy == 0 || ix == iw-1 || iy == ih-1) {
+                targetPosition.setY(-3);
+                targetNormal.setY(0);
+            }
+
             m_positions.append({x, y, z});
             m_normals.append(normal.normalized());
-
             m_targetPositions.append(targetPosition);
             m_targetNormals.append(targetNormal.normalized());
 
             // Note: We only use the bounds of the target positions since they are strictly
             // bigger than the original
-            m_boundsMin.setX(std::min(m_boundsMin.x(), targetPosition.x()));
-            m_boundsMin.setY(std::min(m_boundsMin.y(), targetPosition.y()));
-            m_boundsMin.setZ(std::min(m_boundsMin.z(), targetPosition.z()));
+            boundsMin.setX(std::min(boundsMin.x(), targetPosition.x()));
+            boundsMin.setY(std::min(boundsMin.y(), targetPosition.y()));
+            boundsMin.setZ(std::min(boundsMin.z(), targetPosition.z()));
 
-            m_boundsMax.setX(std::max(m_boundsMax.x(), targetPosition.x()));
-            m_boundsMax.setY(std::max(m_boundsMax.y(), targetPosition.y()));
-            m_boundsMax.setZ(std::max(m_boundsMax.z(), targetPosition.z()));
+            boundsMax.setX(std::max(boundsMax.x(), targetPosition.x()));
+            boundsMax.setY(std::max(boundsMax.y(), targetPosition.y()));
+            boundsMax.setZ(std::max(boundsMax.z(), targetPosition.z()));
         }
     }
 
@@ -169,9 +152,12 @@ void DynamicGeometry::calculateGeometry(){
 
 
 void DynamicGeometry::calculateColumnGeometry(){
-    float radius = 5.0; // 圆柱体半径
-    float height = 10.0; // 圆柱体高度
-    int numSegments = m_gridSize; // 网格的段数
+    float dw = 10.0; // width/2
+    float dh = 10.0;
+    int iw = m_gridSize;
+    int ih = m_gridSize;
+    float wf = dw * 2 / iw; //factor grid coord => position
+    float hf = dh * 2 / ih;
 
     m_positions.clear();
     m_indexes.clear();
@@ -179,58 +165,83 @@ void DynamicGeometry::calculateColumnGeometry(){
     m_targetNormals.clear();
 
     constexpr float maxFloat = std::numeric_limits<float>::max();
-    m_boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
-    m_boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
+    boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
+    boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
 
-    // 添加底部顶点
-    m_positions.append({0.0, static_cast<float>(-height / 2.0), 0.0});
-    m_normals.append({0.0, -1.0, 0.0});
-    m_targetPositions.append({0.0, static_cast<float>(-height / 2.0), 0.0});
-    m_targetNormals.append({0.0, -1.0, 0.0});
-    m_boundsMin = { -radius, static_cast<float>(-height / 2.0), -radius };
-    m_boundsMax = { radius, static_cast<float>(height / 2.0), radius };
+    // We construct a rectangular grid of iw times ih vertices;
+    // ix and iy are indices into the grid. x, y, and z are the spatial
+    // coordinates we calculate for each vertex. tx, ty, and tz are the
+    // coordinates for the morph target.
 
-    // 循环生成圆柱体的侧面顶点和侧面顶点索引
-    for (int i = 0; i < numSegments; ++i) {
-        float theta = static_cast<float>(i) / static_cast<float>(numSegments - 1) * 2.0 * M_PI;
-        float x = radius * cos(theta);
-        float z = radius * sin(theta);
+    for (int iy = 0; iy < ih; ++iy) {
+        for (int ix = 0; ix < iw; ++ix) {
+            float x = ix * wf - dw;
+            float z = iy * hf - dh;
 
-        for (int j = 0; j < 2; ++j) { // 两个顶点分别在圆柱体的上下两端
-            float y = (j == 0) ? -height / 2.0 : height / 2.0;
+            // The base shape is a cosine wave, and the corresponding normal
+            // vectors are calculated from the partial derivatives.
+            float y = 2 * qCos(x) + 3.0;
+            QVector3D normal{2 * qSin(x), 2, 0};
+
+            float tx = x * 1.2;
+            float tz = z * 1.2;
+
+            constexpr float R = 16;
+            QVector3D targetPosition;
+            QVector3D targetNormal;
+
+            // The morph target shape is a hemisphere. Therefore we don't have
+            // to do complex math to calculate the normal vector, since all vectors
+            // from the center are normal to the surface of a sphere.
+            if (tx*tx + tz*tz < R*R) {
+    float ty = 0.4f * qSqrt(R*R - tx*tx - tz*tz);
+    targetPosition = {tx, ty, tz};
+    targetNormal = targetPosition;
+            } else {
+    targetPosition = {tx, -3, tz};
+    targetNormal = {0, 1, 0};
+            }
+
+            // Finally, we make the outside edges of the shapes vertical, so they look nicer.
+            if (ix == 0 || iy == 0 || ix == iw-1 || iy == ih-1) {
+    int iix = qMin(iw-2, qMax(1, ix));
+    int iiy = qMin(ih-2, qMax(1, iy));
+    x = iix * wf - dw;
+    z = iiy * hf - dh;
+    y = -3.0;
+    targetPosition.setY(-3);
+            }
+
+            if (iy >= ih-2)
+    normal = {0, 0, 1};
+            else if (iy <= 1)
+    normal = {0, 0, -1};
 
             m_positions.append({x, y, z});
-            m_normals.append({x, 0, z}); // 圆柱体的法线和顶点在同一方向
+            m_normals.append(normal.normalized());
 
-            // 添加目标位置和目标法线，对于圆柱体，它们与顶点位置和法线相同
-            m_targetPositions.append({x, y, z});
-            m_targetNormals.append({x, 0, z});
+            m_targetPositions.append(targetPosition);
+            m_targetNormals.append(targetNormal.normalized());
 
-            // 更新边界范围
-            m_boundsMin.setX(std::min(m_boundsMin.x(), x));
-            m_boundsMin.setY(std::min(m_boundsMin.y(), y));
-            m_boundsMin.setZ(std::min(m_boundsMin.z(), z));
+            // Note: We only use the bounds of the target positions since they are strictly
+            // bigger than the original
+            boundsMin.setX(std::min(boundsMin.x(), targetPosition.x()));
+            boundsMin.setY(std::min(boundsMin.y(), targetPosition.y()));
+            boundsMin.setZ(std::min(boundsMin.z(), targetPosition.z()));
 
-            m_boundsMax.setX(std::max(m_boundsMax.x(), x));
-            m_boundsMax.setY(std::max(m_boundsMax.y(), y));
-            m_boundsMax.setZ(std::max(m_boundsMax.z(), z));
+            boundsMax.setX(std::max(boundsMax.x(), targetPosition.x()));
+            boundsMax.setY(std::max(boundsMax.y(), targetPosition.y()));
+            boundsMax.setZ(std::max(boundsMax.z(), targetPosition.z()));
         }
     }
 
-    // 添加顶部顶点
-    m_positions.append({0.0, static_cast<float>(height / 2.0), 0.0});
-    m_normals.append({0.0, 1.0, 0.0});
-    m_targetPositions.append({0.0, static_cast<float>(height / 2.0), 0.0});
-    m_targetNormals.append({0.0, 1.0, 0.0});
-
-    // 生成顶部和底部的顶点索引
-    int baseIndex = numSegments * 2;
-    for (int i = 0; i < numSegments - 1; ++i) {
-        m_indexes << baseIndex << i * 2 << (i + 1) * 2;
-        m_indexes << baseIndex + 1 << (i + 1) * 2 + 1 << i * 2 + 1;
+    for (int ix = 0; ix < iw - 1; ++ix) {
+        for (int iy = 0; iy < ih - 1; ++iy) {
+            int idx = ix + iy * ih;
+            m_indexes << idx << idx + iw << idx + iw + 1
+                      << idx << idx + iw + 1 << idx + 1;
+        }
     }
-    m_indexes << baseIndex << (numSegments - 1) * 2 << 0;
-    m_indexes << baseIndex + 1 << (numSegments - 1) * 2 + 1 << 1;
 }
 
 void DynamicGeometry::calculateTriangleGeometry(){
@@ -247,8 +258,8 @@ void DynamicGeometry::calculateTriangleGeometry(){
 
     const float R = 10.0;
     constexpr float maxFloat = std::numeric_limits<float>::max();
-    m_boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
-    m_boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
+    boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
+    boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
 
     for(int iy = 0; iy < ih; ++iy) {
         for(int ix = 0; ix < iw; ++ix) {

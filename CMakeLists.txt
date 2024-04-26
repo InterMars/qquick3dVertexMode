@@ -9,17 +9,22 @@ find_package(Qt6 6.2 COMPONENTS Core Gui Quick Quick3D REQUIRED)
 find_package(Qt6 6.2 COMPONENTS ShaderTools REQUIRED)
 qt_add_executable(appDemoA
     main.cpp
-    dynamicgeometry.h dynamicgeometry.cpp
+    dynamic_geometry.h dynamic_geometry.cpp
+    cube_geometry.h cube_geometry.cpp
 )
 
 qt_add_qml_module(appDemoA
     URI DemoA
     VERSION 1.0
     QML_FILES main.qml
-    SOURCES dynamicgeometry.h dynamicgeometry.cpp
+    SOURCES dynamic_geometry.h dynamic_geometry.cpp
+    SOURCES cube_geometry.h cube_geometry.cpp
     RESOURCES shaders/pencil.frag
     QML_FILES PencilMaterial.qml
     QML_FILES DynamicModel.qml
+    QML_FILES CubeModel.qml
+    RESOURCES shaders/sea.frag
+    RESOURCES shaders/sea.vert
 )
 
 qt6_add_resources(appDemoA "appDemoA"

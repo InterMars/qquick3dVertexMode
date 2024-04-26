@@ -1,5 +1,5 @@
-#ifndef DYNAMICGEOMETRY_H
-#define DYNAMICGEOMETRY_H
+#ifndef DYNAMIC_GEOMETRY_H
+#define DYNAMIC_GEOMETRY_H
 
 #include <QtQuick3D/qquick3d.h>
 #include <QtQuick3D/qquick3dgeometry.h>
@@ -45,10 +45,11 @@ private:
     QByteArray m_indexBuffer;
 
     int m_gridSize = 50;
-    QVector3D m_boundsMin;
-    QVector3D m_boundsMax;
+
+    QVector3D boundsMin;
+    QVector3D boundsMax;
 
     int m_mode = 1;
 };
 
-#endif // DYNAMICGEOMETRY_H
+#endif // DYNAMIC_GEOMETRY_H

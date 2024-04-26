@@ -20,7 +20,9 @@ Window {
         renderMode: View3D.Underlay
         camera: orbitCamera
         environment: SceneEnvironment {
-            debugSettings.wireframeEnabled: true
+            id: env
+            property alias wfenable: env.debugSettings.wireframeEnabled
+            debugSettings.wireframeEnabled: false
             backgroundMode: SceneEnvironment.SkyBox
             lightProbe: Texture {
                 textureData: ProceduralSkyTextureData{  }
@@ -72,7 +74,6 @@ Window {
         DynamicModel {
             id: idModelA
             objectName: "modela"
-            visible: false
             z: 50
         }
         DynamicModel {
@@ -80,23 +81,20 @@ Window {
 //            z: 50
             objectName: "modelb"
         }
-        Model {
-            scale: Qt.vector3d(100, 100, 100)
-            geometry: CubeGeometry {
-            }
-            materials: [
-                DefaultMaterial {
-                    cullMode: DefaultMaterial.NoCulling
-                    diffuseColor: "green"
-                    specularAmount: 0.5
-                }
-            ]
-        }
+//        CubeModel {
+//            id: idCube
+//        }
     }
     Shortcut {
         sequence: "Esc"
         onActivated: {
             Qt.quit()
+        }
+    }
+    Shortcut {
+        sequence: "Shift+1"
+        onActivated: {
+            env.wfenable = !env.wfenable
         }
     }
     MouseArea {
