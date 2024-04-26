@@ -20,7 +20,7 @@ qt_add_qml_module(appDemoA
     SOURCES dynamic_geometry.h dynamic_geometry.cpp
     SOURCES cube_geometry.h cube_geometry.cpp
     RESOURCES shaders/pencil.frag
-    QML_FILES PencilMaterial.qml
+    QML_FILES WaterMaterial.qml
     QML_FILES DynamicModel.qml
     QML_FILES CubeModel.qml
     RESOURCES shaders/sea.frag

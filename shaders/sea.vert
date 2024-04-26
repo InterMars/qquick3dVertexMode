@@ -27,10 +27,10 @@ float simplex_noise(vec3 p)
 
     return dot(vec4(31.316), n);
 }
-
+VARYING vec3 pos;
 void MAIN()
 {
-//    VERTEX.y = simplex_noise(VERTEX);
+    pos = VERTEX;
 }
 
 
