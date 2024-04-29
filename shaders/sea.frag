@@ -59,8 +59,14 @@ VARYING vec3 pos;
 void MAIN()
 {
     float time = iTime * .5+23.0;
-    float n = nestedNoise(pos.xy * 6.);
-    BASE_COLOR =  vec4(mix(vec3(.4, .6, 1.), vec3(.1, .2, 1.), n), 1.);
+
+    float n = nestedNoise(pos.xz * 2.);     // texture sea
+    if(pos.y >= 3.0){
+        BASE_COLOR =  vec4(mix(vec3(.4, .6, 1.), vec3(.1, .2, 1.), n), 1.);
+    }else{
+        BASE_COLOR = vec4(1.0, 1.0, 1.0, 1.0);
+
+    }
 }
 
 
