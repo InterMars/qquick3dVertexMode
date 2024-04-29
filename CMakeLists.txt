@@ -7,11 +7,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 6.2 COMPONENTS Core Gui Quick Quick3D REQUIRED)
 find_package(Qt6 6.2 COMPONENTS ShaderTools REQUIRED)
+
+qt_add_resources(SOURCES resource.qrc)
+
 qt_add_executable(appDemoA
     main.cpp
+    ${SOURCES}
     dynamic_geometry.h dynamic_geometry.cpp
     cube_geometry.h cube_geometry.cpp
 )
+
+qt_add_resources(SOURCES resource.qrc)
 
 qt_add_qml_module(appDemoA
     URI DemoA
@@ -19,12 +25,15 @@ qt_add_qml_module(appDemoA
     QML_FILES main.qml
     SOURCES dynamic_geometry.h dynamic_geometry.cpp
     SOURCES cube_geometry.h cube_geometry.cpp
-    RESOURCES shaders/pencil.frag
     QML_FILES WaterMaterial.qml
     QML_FILES DynamicModel.qml
     QML_FILES CubeModel.qml
-    RESOURCES shaders/sea.frag
-    RESOURCES shaders/sea.vert
+    QML_FILES ./models/sail/Boat_sail_a.qml
+    RESOURCES resource.qrc
+    QML_FILES qml/common.js
+    QML_FILES models/arrow/Arrow.qml
+    QML_FILES Sphere.qml
+    QML_FILES main_copy.qml
 )
 
 qt6_add_resources(appDemoA "appDemoA"
@@ -32,6 +41,7 @@ qt6_add_resources(appDemoA "appDemoA"
         "/"
     FILES
         "main.qml"
+        "resource.qrc"
 )
 #qt6_add_shaders(appDemoA "appDemoA_shader"
 #    PREFIX

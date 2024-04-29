@@ -1,7 +1,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QtQuick3D/qquick3d.h>
-
+#include <QQmlContext>
+  #include <QDir>
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
@@ -14,6 +15,8 @@ int main(int argc, char *argv[])
             if (!obj && url == objUrl)
                 QCoreApplication::exit(-1);
         }, Qt::QueuedConnection);
+    engine.addImportPath("qrc:/models");
+    engine.rootContext()->setContextProperty("currentDir", app.applicationDirPath());
     engine.load(url);
 
     return app.exec();

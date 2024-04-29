@@ -6,8 +6,8 @@ Model {
     scale: Qt.vector3d(100, 100, 100)
     geometry: CubeGeometry {
     }
-    materials: PencilMaterial {
+    materials: DefaultMaterial {
         id: idMaterial
-        uDiffuse: "red"
+        diffuseColor:  "red"
     }
 }

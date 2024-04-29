@@ -9,12 +9,32 @@ struct Vertex {
 
     QVector3D targetPosition;
     QVector3D targetNormal;
+
+    QVector2D texCoord;
 };
-Q_STATIC_ASSERT((sizeof(Vertex)/16)*16 == sizeof(Vertex));
+// Q_STATIC_ASSERT((sizeof(Vertex)/16)*16 == sizeof(Vertex)); // must be  4-float aligned
+Q_STATIC_ASSERT((sizeof(Vertex)/8)*8 == sizeof(Vertex));
 
 DynamicGeometry::DynamicGeometry(QQuick3DObject* parent) : QQuick3DGeometry(parent)
 {
+    m_mode = 3;
+    m_tim.setInterval(300);
+
+    connect(&m_tim, &QTimer::timeout, this, [=](){
+        static float seed;
+        seed = (seed > 100)?0:(seed+0.5);
+        this->qmlUpdateData(seed);
+
+    });
+    if(m_mode == 1 || m_mode == 3){
+        m_tim.start();
+    }
     updateData();
+}
+
+DynamicGeometry::~DynamicGeometry()
+{
+    m_tim.stop();
 }
 void DynamicGeometry::setGridSize(int gridSize)
 {
@@ -26,7 +46,8 @@ void DynamicGeometry::setGridSize(int gridSize)
     updateData();
     update();
 }
-void DynamicGeometry::setMode(int mode) {
+void DynamicGeometry::setMode(int mode)
+{
     if(m_mode == mode)  return;
 
     m_mode = mode;
@@ -38,8 +59,6 @@ void DynamicGeometry::setMode(int mode) {
 void DynamicGeometry::updateData(){
     clear();
     calculateGeometry();
-//    calculateColumnGeometry();
-//    calculateTriangleGeometry();
 
     addAttribute(QQuick3DGeometry::Attribute::PositionSemantic, 0,
                  QQuick3DGeometry::Attribute::ComponentType::F32Type);
@@ -49,6 +68,9 @@ void DynamicGeometry::updateData(){
     addAttribute(QQuick3DGeometry::Attribute::TargetPositionSemantic, 6 * sizeof(float),
                  QQuick3DGeometry::Attribute::ComponentType::F32Type);
     addAttribute(QQuick3DGeometry::Attribute::TargetNormalSemantic, 9 * sizeof(float),
+                 QQuick3DGeometry::Attribute::ComponentType::F32Type);
+
+    addAttribute(QQuick3DGeometry::Attribute::TexCoordSemantic, 12 * sizeof(float),
                  QQuick3DGeometry::Attribute::ComponentType::F32Type);
 
     addAttribute(QQuick3DGeometry::Attribute::IndexSemantic, 0,
@@ -64,6 +86,7 @@ void DynamicGeometry::updateData(){
         v.normal = m_normals[i];
         v.targetPosition = m_targetPositions[i];
         v.targetNormal = m_targetNormals[i];
+        v.texCoord = m_texcoord[i];
     }
 
     setStride(sizeof(Vertex));
@@ -76,7 +99,7 @@ void DynamicGeometry::updateData(){
 }
 
 void DynamicGeometry::calculateGeometry(){
-    float dw = 10.0; // width/2
+    float dw = 20.0; // width/2
     float dh = 10.0;
     int iw = m_gridSize;
     int ih = m_gridSize;
@@ -87,139 +110,92 @@ void DynamicGeometry::calculateGeometry(){
     m_indexes.clear();
     m_targetPositions.clear();
     m_targetNormals.clear();
+    m_texcoord.clear();
 
     constexpr float maxFloat = std::numeric_limits<float>::max();
     boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
     boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
 
-    const float R = 16;
-    float x = 0, y = 0, z = 0;
+    const float R = 10;
     for (int iy = 0; iy < ih; ++iy) {
         for (int ix = 0; ix < iw; ++ix) {
-            float theta = M_PI * iy / (ih - 1); // 角度范围在 [0, π]
-            float phi = 2 * M_PI * ix / (iw - 1); // 角度范围在 [0, 2π]
+            float theta = M_PI * iy / (ih - 1); //  [0, π]
+            float phi = 2 * M_PI * ix / (iw - 1); // [0, 2π]
 
-            float waveHeight = 1.0 ;
-            float x = R * sin(theta) * cos(phi) + waveHeight;
-            float y = R * sin(theta) * sin(phi) + waveHeight;
-            float z = R * cos(theta) + waveHeight;
+            float x = R * sin(theta) * cos(phi);
+            float y = R * sin(theta) * sin(phi);
+            float z = R * cos(theta);
+            QVector3D normal = QVector3D(2*x, 2*y, z).normalized();
+            if(m_mode == 1){
+                float T = 2.0f;
+                float aphi = phi*M_PI*T+m_seed;
+                float atheta = theta*M_PI*T+m_seed;
+                QVector3D wave = QVector3D( R + sin(atheta) * cos(aphi),
+                                           R + cos(atheta) * sin(aphi),
+                                           R + sin(atheta));
 
-            QVector3D normal{2*x, 2*y, z};
-
-            if (iy >= ih-2)
-                normal = {0, 0, 1};
-            else if (iy <= 1)
-                normal = {0, 0, -1};
-
-
-            float tx = ix * wf - dw;
-            float tz = iy * hf - dh;
-            float ty = 3.0;
-
-            QVector3D targetPosition{tx, ty, tz};
-            QVector3D targetNormal{0, 2, 0};
-
-            if (ix == 0 || iy == 0 || ix == iw-1 || iy == ih-1) {
-                targetPosition.setY(-3);
-                targetNormal.setY(0);
+                x += normal.x() * wave.x();
+                y += normal.y() * wave.y();
+                z += normal.z() * wave.z();
             }
+            if(m_mode == 2){
+                theta = 2 * M_PI * iy / (ih - 1);
+                x = R * (16 * pow(sin(theta), 3));
+                y = R * (13 * cos(theta) - 5 * cos(2 * theta) - 2 * cos(3 * theta) - cos(4 * theta));
+                z = R * (sin(phi) * cos(theta));
+            }
+            float u = phi / (2 * M_PI); // 水平方向映射到 [0, 1]
+            float v = theta / M_PI;     // 垂直方向映射到 [0, 1]
+            m_texcoord.append({u, v});
 
-            m_positions.append({x, y, z});
-            m_normals.append(normal.normalized());
-            m_targetPositions.append(targetPosition);
-            m_targetNormals.append(targetNormal.normalized());
+            QVector3D targetPosition;
+            QVector3D targetNormal;
 
-            // Note: We only use the bounds of the target positions since they are strictly
-            // bigger than the original
-            boundsMin.setX(std::min(boundsMin.x(), targetPosition.x()));
-            boundsMin.setY(std::min(boundsMin.y(), targetPosition.y()));
-            boundsMin.setZ(std::min(boundsMin.z(), targetPosition.z()));
+            if(m_mode == 3){
+                x = ix * wf - dw;
+                z = iy * hf - dh;
+                // float T = 1.0;
+                // float a = phi*T+m_seed;
+                // float b = theta*T+m_seed;
+                // y = 2 * qCos(a) + 2 * qSin(b) + 3.0;
+                // normal = QVector3D(2 * qSin(a) + 2 * qCos(b) + 0.234, 2, 0);
+                y = 6.0;
+                normal = QVector3D(0.234, 2, 0);
 
-            boundsMax.setX(std::max(boundsMax.x(), targetPosition.x()));
-            boundsMax.setY(std::max(boundsMax.y(), targetPosition.y()));
-            boundsMax.setZ(std::max(boundsMax.z(), targetPosition.z()));
-        }
-    }
+                if (iy >= ih-2)
+                    normal = {0, 0, 1};
+                else if (iy <= 1)
+                    normal = {0, 0, -1};
 
-    for (int ix = 0; ix < iw - 1; ++ix) {
-        for (int iy = 0; iy < ih - 1; ++iy) {
-            int idx = ix + iy * ih;
-            m_indexes << idx << idx + iw << idx + iw + 1
-                      << idx << idx + iw + 1 << idx + 1;
-        }
-    }
-}
-
-
-void DynamicGeometry::calculateColumnGeometry(){
-    float dw = 10.0; // width/2
-    float dh = 10.0;
-    int iw = m_gridSize;
-    int ih = m_gridSize;
-    float wf = dw * 2 / iw; //factor grid coord => position
-    float hf = dh * 2 / ih;
-
-    m_positions.clear();
-    m_indexes.clear();
-    m_targetPositions.clear();
-    m_targetNormals.clear();
-
-    constexpr float maxFloat = std::numeric_limits<float>::max();
-    boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
-    boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
-
-    // We construct a rectangular grid of iw times ih vertices;
-    // ix and iy are indices into the grid. x, y, and z are the spatial
-    // coordinates we calculate for each vertex. tx, ty, and tz are the
-    // coordinates for the morph target.
-
-    for (int iy = 0; iy < ih; ++iy) {
-        for (int ix = 0; ix < iw; ++ix) {
-            float x = ix * wf - dw;
-            float z = iy * hf - dh;
-
-            // The base shape is a cosine wave, and the corresponding normal
-            // vectors are calculated from the partial derivatives.
-            float y = 2 * qCos(x) + 3.0;
-            QVector3D normal{2 * qSin(x), 2, 0};
-
+                float u = x/dw;
+                float v = z/dh;
+                m_texcoord.append({u, v});
+            }
             float tx = x * 1.2;
             float tz = z * 1.2;
 
             constexpr float R = 16;
-            QVector3D targetPosition;
-            QVector3D targetNormal;
 
-            // The morph target shape is a hemisphere. Therefore we don't have
-            // to do complex math to calculate the normal vector, since all vectors
-            // from the center are normal to the surface of a sphere.
             if (tx*tx + tz*tz < R*R) {
-    float ty = 0.4f * qSqrt(R*R - tx*tx - tz*tz);
-    targetPosition = {tx, ty, tz};
-    targetNormal = targetPosition;
+                float ty = 0.4f * qSqrt(R*R - tx*tx - tz*tz);
+                targetPosition = {tx, ty, tz};
+                targetNormal = targetPosition;
             } else {
-    targetPosition = {tx, -3, tz};
-    targetNormal = {0, 1, 0};
+                targetPosition = {tx, -3, tz};
+                targetNormal = {0, 1, 0};
+
             }
 
-            // Finally, we make the outside edges of the shapes vertical, so they look nicer.
             if (ix == 0 || iy == 0 || ix == iw-1 || iy == ih-1) {
-    int iix = qMin(iw-2, qMax(1, ix));
-    int iiy = qMin(ih-2, qMax(1, iy));
-    x = iix * wf - dw;
-    z = iiy * hf - dh;
-    y = -3.0;
-    targetPosition.setY(-3);
+                int iix = qMin(iw-2, qMax(1, ix));
+                int iiy = qMin(ih-2, qMax(1, iy));
+                x = iix * wf - dw;
+                z = iiy * hf - dh;
+                y = -3.0;
+                targetPosition.setY(-3);
             }
-
-            if (iy >= ih-2)
-    normal = {0, 0, 1};
-            else if (iy <= 1)
-    normal = {0, 0, -1};
-
-            m_positions.append({x, y, z});
+            m_positions.append(QVector3D(x, y, z));
             m_normals.append(normal.normalized());
-
             m_targetPositions.append(targetPosition);
             m_targetNormals.append(targetNormal.normalized());
 
@@ -244,84 +220,8 @@ void DynamicGeometry::calculateColumnGeometry(){
     }
 }
 
-void DynamicGeometry::calculateTriangleGeometry(){
-    float dw = 10.0; // width/2
-    float dh = 10.0;
-    int iw = m_gridSize;
-    int ih = m_gridSize;
-
-    // 清空之前的数据
-    m_positions.clear();
-    m_indexes.clear();
-    m_targetPositions.clear();
-    m_targetNormals.clear();
-
-    const float R = 10.0;
-    constexpr float maxFloat = std::numeric_limits<float>::max();
-    boundsMin = QVector3D(maxFloat, maxFloat, maxFloat);
-    boundsMax = QVector3D(-maxFloat, -maxFloat, -maxFloat);
-
-    for(int iy = 0; iy < ih; ++iy) {
-        for(int ix = 0; ix < iw; ++ix) {
-            float x = ix;
-            float y = qSqrt(R*R - ix*ix);
-            float z = qSqrt(R*R - x*x - y*y);
-
-            QVector3D normal{2 * qSin(x), 2, 0};
-
-            if (iy >= ih-2)
-                normal = {0, 0, 1};
-            else if (iy <= 1)
-                normal = {0, 0, -1};
-
-            m_positions.append({x, y, z});
-            m_normals.append(normal.normalized());
-            m_targetPositions.append({x, y, z});
-            m_targetNormals.append(normal.normalized());
-        }
-    }
-//    int baseIndex = m_gridSize * 2;
-//    for (int i = 0; i < m_gridSize - 1; ++i) {
-//        m_indexes << baseIndex << i * 2 << (i + 1) * 2;
-//        m_indexes << baseIndex + 1 << (i + 1) * 2 + 1 << i * 2 + 1;
-//    }
-//    m_indexes << baseIndex << (m_gridSize - 1) * 2 << 0;
-//    m_indexes << baseIndex + 1 << (m_gridSize - 1) * 2 + 1 << 1;
-//    for (int ix = 0; ix < iw - 1; ++ix) {
-//        for (int iy = 0; iy < ih - 1; ++iy) {
-//            int idx = ix + iy * ih;
-//            m_indexes << idx << idx + iw << idx + iw + 1
-//                      << idx << idx + iw + 1 << idx + 1;
-//        }
-//    }
-
-}
-void DynamicGeometry::updateDataB(){
-    clear();
-
-    constexpr auto randomFloat = [](const float lowest, const float highest) -> float {
-        return lowest + QRandomGenerator::global()->generateDouble() * (highest - lowest);
-    };
-    constexpr int NUM_POINTS = 2000;
-    constexpr int stride = 3 * sizeof(float);
-
-    QByteArray vertexData;
-    vertexData.resize(NUM_POINTS * stride);
-    float *p = reinterpret_cast<float *>(vertexData.data());
-
-    for (int i = 0; i < NUM_POINTS; ++i) {
-        *p++ = randomFloat(-5.0f, +5.0f);
-        *p++ = randomFloat(-5.0f, +5.0f);
-        *p++ = 0.0f;
-    }
-
-    setVertexData(vertexData);
-    setStride(stride);
-    setBounds(QVector3D(-5.0f, -5.0f, 0.0f), QVector3D(+5.0f, +5.0f, 0.0f));
-
-    setPrimitiveType(QQuick3DGeometry::PrimitiveType::Points);
-
-    addAttribute(QQuick3DGeometry::Attribute::PositionSemantic,
-                 0,
-                 QQuick3DGeometry::Attribute::F32Type);
+void DynamicGeometry::qmlUpdateData(double seed){
+    m_seed = seed;
+    updateData();
+    update();
 }

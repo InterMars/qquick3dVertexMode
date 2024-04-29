@@ -3,9 +3,10 @@ import QtQuick3D
 import QtQuick.Window
 import QtQuick3D.Helpers
 import QtQuick3D.AssetUtils
-
 import DemoA
-
+import "./models/sail"
+import "./models/arrow"
+import "./qml/common.js" as COMMON
 Window {
     id: idwindow
     width: 640
@@ -13,12 +14,15 @@ Window {
     visible: true
     title: qsTr("Hello World")
 
+    // Sphere {
+    //     id: view
+    // }
 
     View3D {
         id: view
         anchors.fill: parent
         renderMode: View3D.Underlay
-        camera: orbitCamera
+        camera: idOrbitCamera
         environment: SceneEnvironment {
             id: env
             property alias wfenable: env.debugSettings.wireframeEnabled
@@ -43,14 +47,21 @@ Window {
             ambientColor: Qt.rgba(0.3, 0.3, 0.3, 1.0)
         }
 
-        PointLight {
-            position: Qt.vector3d(-15, 50, 15)
-            eulerRotation: Qt.vector3d(0, -3, 0)
-        }
+        // PointLight {
+        //     position: Qt.vector3d(-15, 50, 15)
+        //     NumberAnimation on eulerRotation.y {
+        //                   from: 0
+        //                   to: 360
+        //                   duration: 17000
+        //                   loops: Animation.Infinite
+        //               }
+        //     eulerRotation: Qt.vector3d(0, -3, 0)
+        // }
+
         Node {
             id: orbitCameraNode
             PerspectiveCamera {
-                id: orbitCamera
+                id: idOrbitCamera
                 z: 500
             }
             Model {
@@ -61,30 +72,35 @@ Window {
                     baseColor: "red"
                 }
                 opacity: 0.0
-                pickable: true
+                pickable: false
                 scale: Qt.vector3d(10.0, 10.0, 10.0)
             }
         }
         OrbitCameraController {
             id: orbitController
             origin: orbitCameraNode
-            camera: orbitCamera
+            camera: idOrbitCamera
         }
 
         DynamicModel {
-            id: idModelA
-            objectName: "modela"
-            z: 50
+            id: idBaseModel
+            scale: Qt.vector3d(10.0, 10.0, 10.0)
         }
-        DynamicModel {
-            id: idModelB
-//            z: 50
-            objectName: "modelb"
+        Boat_sail_a {
+            id: idBoat
+            position: Qt.vector3d(0, 10, 0)
+            scale: Qt.vector3d(5.0, 5.0, 5.0)
+            // eulerRotation: COMMON.getPose(idBaseModel.position, idBoat.position)
         }
-//        CubeModel {
-//            id: idCube
-//        }
     }
+
+    // NumberAnimation on eulerRotation.y {
+    //     running: false
+    //     from: 0
+    //     to: 360
+    //     duration: 17000
+    //     loops: Animation.Infinite
+    // }
     Shortcut {
         sequence: "Esc"
         onActivated: {
@@ -95,6 +111,18 @@ Window {
         sequence: "Shift+1"
         onActivated: {
             env.wfenable = !env.wfenable
+        }
+    }
+    Shortcut {
+        sequence: "w"
+        onActivated: {
+            idBoat.x ++
+            var pos = idBoat.position
+            var ix = pos.x / 20*2
+            var iz = pos.z / 10*2
+            console.log(pos)
+            console.log(ix, iz)
+            idBoat.y += Math.sin(Math.PI * ix) * Math.cos(Math.PI * iz)
         }
     }
     MouseArea {
@@ -120,15 +148,23 @@ Window {
         interval: 10
         repeat: true
         running: false
+
         onTriggered: {
             var result = view.pick(idmouse.mouseX, idmouse.mouseY)
             var pos = Qt.vector3d(result.scenePosition.x.toFixed(2),
                                   result.scenePosition.y.toFixed(2),
                                   result.scenePosition.z.toFixed(2))
-            console.log(pos)
-            if(result.objectHit && (result.objectHit.objectName === "plane_xoy")) {
-                idModelA.position = pos
-            }
+
+            // var rotate = COMMON.getRotationAngle(idBoat.position, 10)
+            // console.log(pos)
+            var ix = pos.x / 228
+            var iz = pos.z / 114
+            pos.y += Math.sin(Math.PI * ix) * Math.cos(Math.PI * iz)
+            // console.log(idBaseModel.boundMax)
+            idBoat.position = pos
         }
     }
 }
+
+
+

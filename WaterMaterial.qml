@@ -6,17 +6,18 @@ CustomMaterial {
     id: root
     // external
     property color uDiffuse: "grey"
-    property double uTime: 0.0
+    property double iTime: 0.0
 
     // interior
     shadingMode: CustomMaterial.Shaded
-    fragmentShader: "shaders/sea.frag"
-//    vertexShader: "shaders/sea.vert"
-    NumberAnimation on uTime {
-        running: false
+    fragmentShader: "qrc:/shaders/basic.frag"
+    vertexShader: "qrc:/shaders/sea.vert"
+
+    NumberAnimation on iTime {
+        running: true
         from: 0
-        to: 360
-        duration: 17000
+        to: 100
+        duration: 30000
         loops: Animation.Infinite
     }
 }
