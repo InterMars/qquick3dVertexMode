@@ -1,5 +1,6 @@
-var theta_offset = 0;
+var theta_offset = -90;
 var phi_offset = 0;
+
 function setPhiOffset(tf) {
     phi_offset = tf
 }

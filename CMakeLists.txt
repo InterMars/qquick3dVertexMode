@@ -14,7 +14,6 @@ qt_add_executable(appDemoA
     main.cpp
     ${SOURCES}
     dynamic_geometry.h dynamic_geometry.cpp
-    cube_geometry.h cube_geometry.cpp
 )
 
 qt_add_resources(SOURCES resource.qrc)
@@ -24,16 +23,12 @@ qt_add_qml_module(appDemoA
     VERSION 1.0
     QML_FILES main.qml
     SOURCES dynamic_geometry.h dynamic_geometry.cpp
-    SOURCES cube_geometry.h cube_geometry.cpp
-    QML_FILES WaterMaterial.qml
-    QML_FILES DynamicModel.qml
-    QML_FILES CubeModel.qml
-    QML_FILES ./models/sail/Boat_sail_a.qml
     RESOURCES resource.qrc
+    QML_FILES DynamicModel.qml
     QML_FILES qml/common.js
+    QML_FILES models/sail/Boat_sail_a.qml
     QML_FILES models/arrow/Arrow.qml
     QML_FILES Sphere.qml
-    QML_FILES main_copy.qml
 )
 
 qt6_add_resources(appDemoA "appDemoA"

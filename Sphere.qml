@@ -41,21 +41,6 @@ View3D {
         position: Qt.vector3d(-15, 50, 15)
         eulerRotation: Qt.vector3d(0, -3, 0)
     }
-    PerspectiveCamera {
-        id: idFllowCamera
-
-        x: idBoat.x
-        y: idBoat.y + 20
-        z: idBoat.z - 65.4595
-
-        eulerRotation.z: 0
-        eulerRotation.y: 180
-        eulerRotation.x: -5
-
-        // eulerRotation.z: idBoat.eulerRotation.z
-        // eulerRotation.y: idBoat.eulerRotation.y + 180
-        // eulerRotation.x: idBoat.eulerRotation.x -5
-    }
     Node {
         id: orbitCameraNode
         PerspectiveCamera {
@@ -86,63 +71,35 @@ View3D {
         property double r: 10
         property double theta: 0.0
         property double phi: 0.0
-        // property scale name: value
-        objectName: "modela"
+        objectName: "idPalnet"
         z: 0
         pickable: true
         scale: Qt.vector3d(r, r, r)
     }
-
-    Arrow {
-        id: idArrow
-        scale: Qt.vector3d(5.0, 5.0, 5.0)
-    }
     Boat_sail_a {
         id: idBoat
+        visible: false
         position: Qt.vector3d(0, idPalnet.r*10, 0)
         scale: Qt.vector3d(5.0, 5.0, 5.0)
         eulerRotation: COMMON.getPose(idPalnet.position, idBoat.position)
     }
-    RandomInstancing {
-        id: instancing
-        instanceCount: 3
-        scale: InstanceRange {
-            property int boundsDiameter: 10
-            from: Qt.vector3d(boundsDiameter, boundsDiameter, boundsDiameter);
-            to: Qt.vector3d(boundsDiameter, boundsDiameter, boundsDiameter)
-
-        }
-        rotation: InstanceRange {
-            property int boundsDiameter: 25
-            from: Qt.vector3d(boundsDiameter, boundsDiameter, boundsDiameter);
-            to: Qt.vector3d(boundsDiameter, boundsDiameter, boundsDiameter)
-        }
-        position: InstanceRange {
-            property int boundsDiameter: 10
-
-            from: Qt.vector3d(boundsDiameter, 0.5*boundsDiameter, 0.5*boundsDiameter);
-            to: Qt.vector3d(2.0+boundsDiameter, -0.5*boundsDiameter, -0.5*boundsDiameter)
-        }
-        color: InstanceRange {
-            from: Qt.hsva(0, 0.1, 0.8, 1)
-            to: Qt.hsva(1, 0.3, 1, 1)
+    Shortcut {
+        sequence: "Shift+1"
+        onActivated: {
+            env.wfenable = !env.wfenable
         }
     }
-    RuntimeLoader {
-        id: importNode
-        source: "qrc:/models/arrow/Arrow.qml"
-        instancing: instancing
-    }
+
     Shortcut {
         sequence: "Shift+2"
         onActivated: {
-            view.camera = idFllowCamera
+            idPalnet.mode = 1
         }
     }
     Shortcut {
         sequence: "Shift+3"
         onActivated: {
-            view.camera = idOrbitCamera
+            idPalnet.waveHeight++
         }
     }
     Shortcut {
@@ -206,7 +163,6 @@ View3D {
             COMMON.setPhiOffset(90)
             console.log(idBoat.position)
             var newpos = COMMON.angleToPosition(rotate.x, rotate.y, idPalnet.r*10)
-            // var neweul = Qt.vector3d(0, 0, 0)
             idBoat.position = newpos
         }
     }
@@ -243,9 +199,6 @@ View3D {
             // if(result.objectHit && (result.objectHit.objectName === "plane_xoy")) {
                 // idArrow.position = pos
                 // idArrow.eulerRotation = eul
-
-
-
             var rotate = COMMON.getRotationAngle(idBoat.position, idPalnet.r*10)
             console.log(rotate)
             idBoat.position = pos

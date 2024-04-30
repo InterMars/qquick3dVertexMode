@@ -1,11 +1,6 @@
 <RCC>
     <qresource prefix="/">
-        <file>shaders/planet.frag</file>
-        <file>shaders/sea.frag</file>
-        <file>shaders/sea.vert</file>
-        <file>shaders/spot.frag</file>
-        <file>shaders/noise.frag</file>
-        <file>shaders/sky.frag</file>
+        <file>shaders/water.vert</file>
         <file>models/sail/maps/colormap.png</file>
         <file>models/sail/meshes/boat_sail_a_mesh.mesh</file>
         <file>models/sail/meshes/sail_mesh.mesh</file>
@@ -14,6 +9,7 @@
         <file>models/arrow/maps/colormap.png</file>
         <file>models/arrow/meshes/arrow_mesh.mesh</file>
         <file>models/arrow/Arrow.qml</file>
-        <file>shaders/basic.frag</file>
+        <file>shaders/water.frag</file>
+        <file>shaders/sphere.frag</file>
     </qresource>
 </RCC>

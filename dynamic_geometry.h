@@ -34,8 +34,8 @@ public slots:
     void qmlUpdateData(double seed);
 private:
     void calculateGeometry();
-    void calculateColumnGeometry();
-    void calculateTriangleGeometry();
+    void calculateSphereGeometry();
+    void calculateCubeGeometry();
 
     void updateData();
     QList<QVector3D> m_positions;

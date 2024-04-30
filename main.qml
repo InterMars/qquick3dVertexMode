@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick3D
 import QtQuick.Window
+import QtQuick.Layouts
+import QtQuick.Controls
 import QtQuick3D.Helpers
 import QtQuick3D.AssetUtils
 import DemoA
@@ -12,11 +14,7 @@ Window {
     width: 640
     height: 480
     visible: true
-    title: qsTr("Hello World")
-
-    // Sphere {
-    //     id: view
-    // }
+    title: qsTr("Demo")
 
     View3D {
         id: view
@@ -32,7 +30,8 @@ Window {
                 textureData: ProceduralSkyTextureData{  }
             }
             InfiniteGrid {
-                visible: true
+                id: idGrid
+                visible: false
                 gridInterval: 100
             }
         }
@@ -44,25 +43,20 @@ Window {
                 duration: 17000
                 loops: Animation.Infinite
             }
-            ambientColor: Qt.rgba(0.3, 0.3, 0.3, 1.0)
+            ambientColor: Qt.rgba(0.3, 0.3, 0.7, 0.2)
         }
 
-        // PointLight {
-        //     position: Qt.vector3d(-15, 50, 15)
-        //     NumberAnimation on eulerRotation.y {
-        //                   from: 0
-        //                   to: 360
-        //                   duration: 17000
-        //                   loops: Animation.Infinite
-        //               }
-        //     eulerRotation: Qt.vector3d(0, -3, 0)
-        // }
-
+        PointLight {
+            position: Qt.vector3d(-15, 50, 15)
+            eulerRotation: Qt.vector3d(0, -3, 0)
+        }
         Node {
             id: orbitCameraNode
             PerspectiveCamera {
                 id: idOrbitCamera
-                z: 500
+                z: 700
+                y: 230
+                eulerRotation.x: -10
             }
             Model {
                 id: idPlaneXoY
@@ -83,87 +77,167 @@ Window {
         }
 
         DynamicModel {
-            id: idBaseModel
-            scale: Qt.vector3d(10.0, 10.0, 10.0)
-        }
-        Boat_sail_a {
-            id: idBoat
-            position: Qt.vector3d(0, 10, 0)
-            scale: Qt.vector3d(5.0, 5.0, 5.0)
-            // eulerRotation: COMMON.getPose(idBaseModel.position, idBoat.position)
+            id: idPalnet
+            opacity: 1.0
+            property double r: 10
+            property double theta: 0.0
+            property double phi: 0.0
+            objectName: "idPalnet"
+            z: 0
+            pickable: true
+            scale: Qt.vector3d(r, r, r)
+
+
+            onModeChanged: {
+                if(mode === 1) {
+                    idPalnet.waveHeight = 0.0
+                    sliderWave.value = 0.0
+                }else{
+                    idPalnet.waveHeight = 2.0
+                    sliderWave.value = 2.0
+                }
+            }
         }
     }
+    ColumnLayout {
+        Label {
+            text: "Use mouse to navigate"
+            font.bold: true
+        }
 
-    // NumberAnimation on eulerRotation.y {
-    //     running: false
-    //     from: 0
-    //     to: 360
-    //     duration: 17000
-    //     loops: Animation.Infinite
-    // }
+        CheckBox {
+            id: boxReference
+            text: "Enable Grid or Wire"
+            checked: false
+            focusPolicy: Qt.NoFocus
+            onCheckedChanged: {
+                if(checked) {
+                    boxGrid.checked = true
+                }else{
+                    boxGrid.checked = checked
+                    boxWireFrame.checked = checked
+                }
+            }
+        }
+        RowLayout {
+            RadioButton {
+                id: boxGrid
+                text: "Grid"
+                checked: false
+                enabled: boxReference.checked
+                focusPolicy: Qt.NoFocus
+                onCheckedChanged: {
+                    idGrid.visible = checked
+                }
+            }
+            RadioButton {
+                id: boxWireFrame
+                text: "Wireframe"
+                checked: false
+                enabled: boxReference.checked
+                focusPolicy: Qt.NoFocus
+                onCheckedChanged: {
+                    env.wfenable = checked
+                }
+            }
+        }
+
+        RowLayout {
+            ButtonGroup {
+                buttons: [ radioSphere, radioCube ]
+            }
+
+            RadioButton {
+                id: radioCube
+                text: "Cube"
+                checked: true
+                focusPolicy: Qt.NoFocus
+                onCheckedChanged: { idPalnet.mode = checked?0:1 }
+            }
+            RadioButton {
+                id: radioSphere
+                text: "Sphere"
+                checked: true
+                focusPolicy: Qt.NoFocus
+                onCheckedChanged: { idPalnet.mode = checked?1:0 }
+            }
+        }
+        ColumnLayout {
+            CheckBox {
+                id: boxStop
+                text: "Enable Move"
+                checked: true
+                focusPolicy: Qt.NoFocus
+                onCheckedChanged: {
+                    idPalnet.aniStatus = checked
+                }
+            }
+            Label {
+                text: "Wave adjust"
+            }
+            Slider {
+                id: sliderWave
+                from: (idPalnet.mode === 1)?(-20.0):-4.0
+                to: (idPalnet.mode === 1)?(20.0):6.0
+                stepSize: 0.01
+                value: 0.0
+                focusPolicy: Qt.NoFocus
+                onValueChanged: {
+                    idPalnet.waveHeight = value
+                }
+            }
+            ColumnLayout {
+                visible: radioCube.checked
+
+                CheckBox {
+                    id: boxFrozen
+                    text: "Enable Frozen Effect"
+                    checked: true
+                    focusPolicy: Qt.NoFocus
+                    onCheckedChanged: {
+                        idPalnet.frozen = checked
+                    }
+                }
+                RadioButton {
+                    id: boxEffectNormal
+                    text: "Effect Normal"
+                    checked: true
+                    enabled: radioCube.checked
+                    focusPolicy: Qt.NoFocus
+                    onCheckedChanged: {
+                        idPalnet.effect = 0
+                    }
+                }
+                RadioButton {
+                    id: boxEffect1
+                    text: "EffectA"
+                    checked: false
+                    enabled: radioCube.checked
+                    focusPolicy: Qt.NoFocus
+                    onCheckedChanged: {
+                        idPalnet.effect = 1
+                    }
+                }
+                RadioButton {
+                    id: boxEffect2
+                    text: "EffectB"
+                    checked: false
+                    enabled: radioCube.checked
+                    focusPolicy: Qt.NoFocus
+                    onCheckedChanged: {
+                        idPalnet.effect = 2
+                    }
+                }
+            }
+        }
+    }
     Shortcut {
         sequence: "Esc"
         onActivated: {
             Qt.quit()
         }
     }
-    Shortcut {
-        sequence: "Shift+1"
-        onActivated: {
-            env.wfenable = !env.wfenable
-        }
-    }
-    Shortcut {
-        sequence: "w"
-        onActivated: {
-            idBoat.x ++
-            var pos = idBoat.position
-            var ix = pos.x / 20*2
-            var iz = pos.z / 10*2
-            console.log(pos)
-            console.log(ix, iz)
-            idBoat.y += Math.sin(Math.PI * ix) * Math.cos(Math.PI * iz)
-        }
-    }
-    MouseArea {
-        id: idmouse
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        anchors.fill: view
-        onPressed: (mouse)=> {
-            if(mouse.button === Qt.RightButton){
-                orbitController.mouseEnabled = false
-                idtimer_mousefollow.start()
-            }
 
-        }
-        onReleased: (mouse)=> {
-            if(mouse.button === Qt.RightButton){
-                orbitController.mouseEnabled = true
-                idtimer_mousefollow.stop()
-            }
-        }
-    }
-    Timer {
-        id: idtimer_mousefollow
-        interval: 10
-        repeat: true
-        running: false
-
-        onTriggered: {
-            var result = view.pick(idmouse.mouseX, idmouse.mouseY)
-            var pos = Qt.vector3d(result.scenePosition.x.toFixed(2),
-                                  result.scenePosition.y.toFixed(2),
-                                  result.scenePosition.z.toFixed(2))
-
-            // var rotate = COMMON.getRotationAngle(idBoat.position, 10)
-            // console.log(pos)
-            var ix = pos.x / 228
-            var iz = pos.z / 114
-            pos.y += Math.sin(Math.PI * ix) * Math.cos(Math.PI * iz)
-            // console.log(idBaseModel.boundMax)
-            idBoat.position = pos
-        }
-    }
 }
 
 

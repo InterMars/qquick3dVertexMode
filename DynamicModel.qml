@@ -4,34 +4,69 @@ import DemoA
 
 Model {
     id: root
-    property bool isPicked: false
     pickable: true
-    property alias boundMax: idGeometry.boundMax
-    onIsPickedChanged: {
-        idMaterial.uDiffuse = isPicked ? "red" : "grey"
+    // 1: sphere, other: cube
+    property alias effect: idMaterial.uEffect
+    property alias mode: idGeometry.mode
+    property alias frozen: idMaterial.uFrozen
+
+    property alias aniStatus: idAni.running
+    property double waveHeight: 4.0
+    onWaveHeightChanged: {
+        if(idGeometry.mode === 1) {
+            if(Math.abs(waveHeight) > 20) {
+                waveHeight = waveHeight>0?20.0:-20.0
+            }
+            if(waveHeight <= 20 && waveHeight >= -20){
+                idMaterial.uHeight = waveHeight
+            }else {
+                idMaterial.uHeight = 20.0
+            }
+        }else {
+//            console.log(waveHeight)
+//            if(Math.abs(waveHeight) > 4.0){
+//                idMaterial.uHeight = waveHeight>0?4.0:-5.0
+//            }else {
+                idMaterial.uHeight = waveHeight
+//            }
+        }
+
     }
+
     geometry: DynamicGeometry {
         id: idGeometry
+        mode: 0
     }
 
-    // MorphTarget {
-    //     id: morphtarget
-    //     attributes: MorphTarget.Position | MorphTarget.Normal
-    //     SequentialAnimation on weight {
-    //         PauseAnimation { duration: 1000 }
-    //         NumberAnimation { from: 0; to: 1; duration: 4000 }
-    //         PauseAnimation { duration: 1000 }
-    //         NumberAnimation { from: 1; to: 0; duration: 4000 }
-    //         loops: Animation.Infinite
-    //     }
-    // }
-    // morphTargets: [ morphtarget ]
-    // materials: DefaultMaterial {
-    //     diffuseColor: "blue"
-    // }
-    materials: WaterMaterial {
+    materials: CustomMaterial {
         id: idMaterial
-        uDiffuse: "grey"
-    }
+        property color uDiffuse: "grey"
+        property double uTime: 0.0
+        property int uMode: idGeometry.mode
+        property double uHeight: 0.0
+        property int uEffect: 0
+        property bool uFrozen: true
 
+        //
+        shadingMode: CustomMaterial.Shaded
+        fragmentShader: "qrc:/shaders/water.frag"
+        vertexShader: "qrc:/shaders/water.vert"
+        SequentialAnimation on uTime {
+            id: idAni
+            running: true
+            loops: Animation.Infinite
+            NumberAnimation {
+                from: 0.0
+                to: 100.0
+                duration: 10000
+                easing.type: Easing.InOutQuad
+            }
+            NumberAnimation {
+                from: 100.0
+                to: 0.0
+                duration: 10000
+                easing.type: Easing.InOutQuad
+            }
+        }
+    }
 }
